@@ -4,8 +4,10 @@ import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -31,6 +33,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         requestExactAlarmPermission(this)
         createNotificationChannel()
+        val permPref: SharedPreferences = getSharedPreferences("permission", Context.MODE_PRIVATE)
+        if (!permPref.getBoolean("granted", false)) {
+            requestAutoStartPermission(this)
+        }
 
         timePicker = findViewById(R.id.timePicker)
         checkBoxRepeat = findViewById(R.id.checkBoxRepeat)
@@ -88,11 +94,29 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "Báo thức đã đặt lúc ${String.format(Locale.getDefault(),"%02d:%02d", hour, minute)}", Toast.LENGTH_SHORT).show()
     }
     private fun requestExactAlarmPermission(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { // Android 12+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = context.getSystemService(AlarmManager::class.java)
             if (!alarmManager.canScheduleExactAlarms()) {
                 val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
                 context.startActivity(intent)
+            }
+        }
+    }
+    private fun requestAutoStartPermission(context: Context) {
+        val manufacturer = android.os.Build.MANUFACTURER
+        if (manufacturer.equals("Xiaomi", ignoreCase = true)) {
+            try {
+                val intent = Intent().apply {
+                    component = ComponentName(
+                        "com.miui.securitycenter",
+                        "com.miui.permcenter.autostart.AutoStartManagementActivity"
+                    )
+                }
+                context.startActivity(intent)
+                val permPref: SharedPreferences = getSharedPreferences("permission", Context.MODE_PRIVATE)
+                permPref.edit().putBoolean("granted", true).apply()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
