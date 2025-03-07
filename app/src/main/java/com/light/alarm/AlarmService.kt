@@ -1,8 +1,6 @@
 package com.light.alarm
 
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.Service
+import android.app.*
 import android.content.Intent
 import android.media.MediaPlayer
 import android.os.IBinder
@@ -10,6 +8,11 @@ import androidx.core.app.NotificationCompat
 
 class AlarmService : Service() {
     private lateinit var mediaPlayer: MediaPlayer
+
+    override fun onCreate() {
+        super.onCreate()
+        createNotificationChannel()
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         mediaPlayer = MediaPlayer.create(this, R.raw.alarm_sound)
@@ -22,8 +25,9 @@ class AlarmService : Service() {
 
     private fun showNotification() {
         val stopIntent = Intent(this, StopAlarmReceiver::class.java)
-        val stopPendingIntent = PendingIntent.getBroadcast(this, 0, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-
+        val stopPendingIntent = PendingIntent.getBroadcast(
+            this, 0, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val notification = NotificationCompat.Builder(this, "alarm_channel")
             .setContentTitle("Báo thức")
@@ -34,15 +38,24 @@ class AlarmService : Service() {
             .addAction(R.drawable.ic_stop, "Tắt", stopPendingIntent)
             .build()
 
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.notify(1, notification)
+        startForeground(1, notification)
+    }
+
+    private fun createNotificationChannel() {
+        val channel = NotificationChannel(
+            "alarm_channel",
+            "Alarm Notifications",
+            NotificationManager.IMPORTANCE_HIGH
+        )
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(channel)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         mediaPlayer.stop()
         mediaPlayer.release()
-
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

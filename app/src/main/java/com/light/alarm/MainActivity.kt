@@ -20,6 +20,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import java.util.Calendar
 import java.util.Locale
+import androidx.core.content.edit
+import androidx.core.net.toUri
 
 
 class MainActivity : AppCompatActivity() {
@@ -78,10 +80,11 @@ class MainActivity : AppCompatActivity() {
 
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, AlarmReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        val pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
 
         if (repeat) {
-            alarmManager.setRepeating(
+            alarmManager.setInexactRepeating(
                 AlarmManager.RTC_WAKEUP,
                 calendar.timeInMillis,
                 AlarmManager.INTERVAL_DAY,
@@ -97,13 +100,14 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = context.getSystemService(AlarmManager::class.java)
             if (!alarmManager.canScheduleExactAlarms()) {
-                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                    "package:${context.packageName}".toUri())
                 context.startActivity(intent)
             }
         }
     }
     private fun requestAutoStartPermission(context: Context) {
-        val manufacturer = android.os.Build.MANUFACTURER
+        val manufacturer = Build.MANUFACTURER
         if (manufacturer.equals("Xiaomi", ignoreCase = true)) {
             try {
                 val intent = Intent().apply {
@@ -113,8 +117,8 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
                 context.startActivity(intent)
-                val permPref: SharedPreferences = getSharedPreferences("permission", Context.MODE_PRIVATE)
-                permPref.edit().putBoolean("granted", true).apply()
+                val permPref: SharedPreferences = context.getSharedPreferences("permission", Context.MODE_PRIVATE)
+                permPref.edit() { putBoolean("granted", true) }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
